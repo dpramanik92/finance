@@ -1,3 +1,6 @@
+import pandas as pd
+import numpy as np
+import datetime
 class Trading:
     def __init__(self,strategy,ticker,current_portfolio,threshold):
         self.strat = strategy(ticker)
@@ -23,7 +26,6 @@ class Trading:
     def calculate_return(self):
         self.equity = self.current['Equity'].iloc[-1]*(1+self.stock['Close'].pct_change().iloc[-1])
         self.value = self.equity+self.current['Cash'].iloc[-1]
-        display(self.equity,self.value,self.stock['Close'].pct_change().iloc[1])
         
     def update_portfolio(self):
         self.current = pd.concat([self.current,pd.DataFrame({'Date':[datetime.datetime.today().date()],'Equity':[self.equity],'Cash':[self.cash],'Total':[self.value]}) ]) 
