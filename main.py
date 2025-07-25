@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from levPortfolio import levPortfolio
+from portfolio.levPortfolio import levPortfolio
 
 def print_versions():
     """Print versions of key dependencies."""
