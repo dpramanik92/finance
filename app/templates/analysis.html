@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Market Analysis</h1>
+
+    <!-- Analysis Tools -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Technical Analysis</h5>
+                    <ul class="list-unstyled">
+                        <li>Moving Averages</li>
+                        <li>RSI</li>
+                        <li>MACD</li>
+                    </ul>
+                    <button class="btn btn-primary">View Details</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Risk Analysis</h5>
+                    <ul class="list-unstyled">
+                        <li>Value at Risk</li>
+                        <li>Sharpe Ratio</li>
+                        <li>Beta</li>
+                    </ul>
+                    <button class="btn btn-primary">View Details</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Portfolio Analysis</h5>
+                    <ul class="list-unstyled">
+                        <li>Performance Attribution</li>
+                        <li>Risk Decomposition</li>
+                        <li>Correlation Analysis</li>
+                    </ul>
+                    <button class="btn btn-primary">View Details</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Portfolio Management</h1>
+    
+    <!-- Portfolio Summary -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Value</h5>
+                    <h2 class="card-text">$100,000</h2>
+                    <p class="text-success">+5.2% today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Assets</h5>
+                    <h2 class="card-text">15</h2>
+                    <p>Diversification Score: 8.5/10</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Risk Level</h5>
+                    <h2 class="card-text">Moderate</h2>
+                    <p>Volatility: 12%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Allocation -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Asset Allocation</h5>
+            <div id="allocation-chart"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

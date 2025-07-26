@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Investment Strategies</h1>
+
+    <!-- Strategy Selection -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Momentum Strategy</h5>
+                    <p class="card-text">Trade based on price momentum indicators.</p>
+                    <button class="btn btn-primary">Apply Strategy</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Value Strategy</h5>
+                    <p class="card-text">Identify undervalued assets using fundamental analysis.</p>
+                    <button class="btn btn-primary">Apply Strategy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Strategy Performance -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Strategy Performance</h5>
+            <div id="performance-chart"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

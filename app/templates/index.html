@@ -1,6 +1,111 @@
 {% extends "base.html" %}
-{% block title %}Home{% endblock %}
+
 {% block content %}
-<h2>Welcome to Flask App</h2>
-<p>This is the homepage.</p>
+<h1>Construct Portfolio</h1>
+
+<!-- Add this in the head section -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<!-- Add this style section -->
+<style>
+    .delete-stock {
+        transition: all 0.3s ease;
+    }
+    .delete-stock:hover {
+        transform: scale(1.05);
+    }
+    .table td {
+        vertical-align: middle;
+    }
+</style>
+
+<!-- Stock Selection Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Add Stocks</h5>
+        <form id="stockForm" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" id="tickerSymbol" placeholder="Enter Ticker Symbol (e.g., AAPL)">
+            </div>
+            <div class="col-md-4">
+                <input type="number" class="form-control" id="quantity" placeholder="Quantity">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Add to Portfolio</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Portfolio Overview -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Portfolio Value</h5>
+                <h2 id="portfolioValue">₹0.00</h2>
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <div class="d-flex align-items-center">
+                            <span id="dayReturnIcon" class="me-2">
+                                <i class="fas fa-arrow-up text-success"></i>
+                            </span>
+                            <div>
+                                <h6 class="mb-0" id="dayReturn">0.00%</h6>
+                                <small class="text-muted">1 Day Return</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center">
+                            <span id="yearReturnIcon" class="me-2">
+                                <i class="fas fa-arrow-up text-success"></i>
+                            </span>
+                            <div>
+                                <h6 class="mb-0" id="yearReturn">0.00%</h6>
+                                <small class="text-muted">1 Year Return</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Portfolio Composition</h5>
+                <div style="height: 300px;">
+                    <canvas id="compositionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Holdings Table -->
+<div class="card mt-4">
+    <div class="card-body">
+        <h5 class="card-title">Current Holdings</h5>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Quantity</th>
+                        <th>Current Price</th>
+                        <th>Total Value</th>
+                        <th>% of Portfolio</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="holdingsTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
 {% endblock %}
