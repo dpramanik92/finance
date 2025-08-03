@@ -248,3 +248,43 @@ def download_portfolio():
     except Exception as e:
         logger.error(f"Error generating portfolio file: {str(e)}", exc_info=True)
         return jsonify({'error': 'Failed to generate portfolio file'}), 500
+
+@stock_bp.route('/portfolio/load', methods=['POST'])
+def load_portfolio():
+    """Load portfolio from Excel file"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+            
+        if not file.filename.endswith('.xlsx'):
+            return jsonify({'error': 'Invalid file format. Please upload an Excel file'}), 400
+            
+        # Read Excel file
+        df = pd.read_excel(file)
+        
+        # Validate required columns
+        required_columns = ['symbol', 'quantity', 'price', 'value', 
+                          'day_return', 'year_return', 'name', 'currency']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            return jsonify({'error': f'Missing columns: {", ".join(missing_columns)}'}), 400
+            
+        # Update portfolio store
+        portfolio_store._portfolio = df
+        portfolio_store.save_to_session()
+        
+        return jsonify({
+            'message': 'Portfolio loaded successfully',
+            'data': portfolio_store.get_portfolio().to_dict('records'),
+            'total_value': portfolio_store.get_total_value(),
+            'day_return': portfolio_store.get_returns()[0],
+            'year_return': portfolio_store.get_returns()[1]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error loading portfolio: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to load portfolio file'}), 500

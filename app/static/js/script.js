@@ -93,6 +93,48 @@ class PortfolioManager {
                 alert(`Failed to export portfolio: ${error.message}`);
             }
         });
+
+        // Add load portfolio handler
+        document.getElementById('loadPortfolio').addEventListener('click', () => {
+            document.getElementById('portfolioFile').click();
+        });
+
+        document.getElementById('portfolioFile').addEventListener('change', async (event) => {
+            try {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/portfolio/load', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to load portfolio');
+                }
+
+                const result = await response.json();
+                
+                // Update portfolio display
+                this.portfolio = new Map(
+                    result.data.map(stock => [stock.symbol, stock])
+                );
+                this.updateDisplay();
+                
+                alert('Portfolio loaded successfully!');
+                
+            } catch (error) {
+                console.error('Load error:', error);
+                alert(`Failed to load portfolio: ${error.message}`);
+            } finally {
+                // Reset file input
+                event.target.value = '';
+            }
+        });
     }
 
     async handleStockSubmit() {

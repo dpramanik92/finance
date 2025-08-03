@@ -1,46 +1,256 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="mb-4">Portfolio Management</h1>
-    
-    <!-- Portfolio Summary -->
+<div class="container mt-4">
+    <!-- Portfolio Overview Cards -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Total Value</h5>
-                    <h2 class="card-text">$100,000</h2>
-                    <p class="text-success">+5.2% today</p>
+                    <h6 class="card-title text-muted">Total Portfolio Value</h6>
+                    <h3 class="mb-0">₹{{ "{:,.2f}".format(analytics.total_value) }}</h3>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Assets</h5>
-                    <h2 class="card-text">15</h2>
-                    <p>Diversification Score: 8.5/10</p>
+                    <h6 class="card-title text-muted">Number of Assets</h6>
+                    <h3 class="mb-0">{{ analytics.asset_count }}</h3>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Risk Level</h5>
-                    <h2 class="card-text">Moderate</h2>
-                    <p>Volatility: 12%</p>
+                    <h6 class="card-title text-muted">Risk Level</h6>
+                    <h3 class="mb-0 {% if analytics.risk_level == 'High' %}text-danger
+                                    {% elif analytics.risk_level == 'Medium' %}text-warning
+                                    {% else %}text-success{% endif %}">
+                        {{ analytics.risk_level }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Diversification Score</h6>
+                    <h3 class="mb-0">{{ analytics.diversification_score }}/100</h3>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Asset Allocation -->
+    <!-- Risk Analysis -->
     <div class="card mb-4">
         <div class="card-body">
-            <h5 class="card-title">Asset Allocation</h5>
-            <div id="allocation-chart"></div>
+            <h5 class="card-title">Risk Analysis</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Largest Holding:</strong> {{ analytics.largest_holding }}</p>
+                    <p><strong>Concentration:</strong> {{ analytics.largest_holding_pct }}%</p>
+                </div>
+                <div class="col-md-6">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ analytics.diversification_score }}%"
+                             aria-valuenow="{{ analytics.diversification_score }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            Diversification
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Holdings Table -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Portfolio Holdings</h5>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Name</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Value</th>
+                            <th>Allocation</th>
+                            <th>Day Return</th>
+                            <th>Year Return</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for holding in portfolio %}
+                        <tr>
+                            <td>{{ holding.symbol }}</td>
+                            <td>{{ holding.name }}</td>
+                            <td>{{ holding.quantity }}</td>
+                            <td>₹{{ "%.2f"|format(holding.price) }}</td>
+                            <td>₹{{ "%.2f"|format(holding.value) }}</td>
+                            <td>{{ "%.1f"|format(holding.allocation) }}%</td>
+                            <td class="{{ 'text-success' if holding.day_return > 0 else 'text-danger' }}">
+                                {{ "%+.2f"|format(holding.day_return) }}%
+                            </td>
+                            <td class="{{ 'text-success' if holding.year_return > 0 else 'text-danger' }}">
+                                {{ "%+.2f"|format(holding.year_return) }}%
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Performance Chart -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">5-Year Performance vs NIFTY 50</h5>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Performance Metrics</h5>
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item">
+                            <h6 class="mb-1">1 Year Return</h6>
+                            <p class="mb-0 h4 {{ 'text-success' if performance.metrics.get('one_year_return', 0) > 0 else 'text-danger' }}">
+                                {{ "{:+.2f}%".format(performance.metrics.get('one_year_return', 0)) }}
+                            </p>
+                        </div>
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Volatility (Annualized)</h6>
+                            <p class="mb-0 h4">
+                                {{ "{:.2f}%".format(performance.metrics.get('volatility', 0)) }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Performance Chart -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Portfolio Performance vs NIFTY 50</h5>
+                <div style="height: 400px">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get data from template and parse it
+    const chartData = {
+        labels: {{ performance.portfolio_hist.index | tojson }},
+        datasets: [
+            {
+                label: 'Portfolio',
+                data: {{ performance.portfolio_hist.values | tojson }},
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1,
+                fill: false
+            },
+            {
+                label: 'NIFTY 50',
+                data: {{ performance.benchmark_hist.values | tojson }},
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1,
+                fill: false
+            }
+        ]
+    };
+
+    // Initialize chart only if we have data
+    if (chartData.labels && chartData.labels.length > 0) {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month',
+                            displayFormats: {
+                                month: 'MMM YYYY'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Return (%)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(2) + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + 
+                                       context.parsed.y.toFixed(2) + '%';
+                            }
+                        }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    } else {
+        // Display a message if no data
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('No performance data available', 
+                    ctx.canvas.width / 2, 
+                    ctx.canvas.height / 2);
+    }
+});
+</script>
 {% endblock %}
