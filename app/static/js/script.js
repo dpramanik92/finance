@@ -47,6 +47,52 @@ class PortfolioManager {
                 this.deleteStock(symbol);
             }
         });
+
+        // Update export button handler
+        document.getElementById('savePortfolio').addEventListener('click', async () => {
+            try {
+                // Configure save dialog options
+                const options = {
+                    suggestedName: `portfolio_${new Date().toISOString().slice(0,10)}.xlsx`,
+                    types: [{
+                        description: 'Excel Files',
+                        accept: {
+                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+                        }
+                    }]
+                };
+
+                // Show save dialog
+                const handle = await window.showSaveFilePicker(options);
+                
+                // Get portfolio data
+                const response = await fetch('/api/portfolio/download', {
+                    headers: {
+                        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to generate portfolio file');
+                }
+
+                // Get the file data and write to selected location
+                const blob = await response.blob();
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+
+                alert('Portfolio saved successfully!');
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    // User cancelled the save dialog
+                    return;
+                }
+                console.error('Export error:', error);
+                alert(`Failed to export portfolio: ${error.message}`);
+            }
+        });
     }
 
     async handleStockSubmit() {
@@ -233,9 +279,7 @@ class PortfolioManager {
 
     async fetchStockData(symbol, quantity) {
         try {
-            const response = await fetch(
-                `/api/stock/${symbol}?quantity=${quantity}`
-            );
+            const response = await fetch(`/api/stock/${symbol}?quantity=${quantity}`);
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.error || 'Failed to fetch stock data');

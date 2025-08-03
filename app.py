@@ -1,4 +1,5 @@
-from flask import Flask
+from flask import Flask, session
+from flask_session import Session
 import os
 from app.routes.main_routes import main
 from app.routes.stock_routes import stock_bp
@@ -9,8 +10,10 @@ def create_app():
                 template_folder='app/templates',
                 static_folder='app/static')
     
-    # Configure secret key
+    # Configure session
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_123')
+    app.config['SESSION_TYPE'] = 'filesystem'
+    Session(app)
     
     # Register blueprints
     app.register_blueprint(main)
