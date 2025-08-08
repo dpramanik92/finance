@@ -11,6 +11,25 @@ class PortfolioManager {
         });
         this.initializeChart();
         this.bindEvents();
+        // Load existing portfolio data
+        this.loadExistingPortfolio();
+    }
+
+    async loadExistingPortfolio() {
+        try {
+            const response = await fetch('/api/portfolio');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.data && data.data.length > 0) {
+                    this.portfolio = new Map(
+                        data.data.map(stock => [stock.symbol, stock])
+                    );
+                    this.updateDisplay();
+                }
+            }
+        } catch (error) {
+            console.log('No existing portfolio found or error loading:', error);
+        }
     }
 
     initializeChart() {

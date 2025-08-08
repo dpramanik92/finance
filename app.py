@@ -16,6 +16,12 @@ def create_app():
     app.config['SESSION_TYPE'] = 'filesystem'
     app.config['SESSION_PERMANENT'] = True
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
+    
+    # Ensure session directory exists
+    session_dir = os.path.join(os.getcwd(), 'flask_session')
+    if not os.path.exists(session_dir):
+        os.makedirs(session_dir)
+    
     Session(app)
     
     # Register blueprints

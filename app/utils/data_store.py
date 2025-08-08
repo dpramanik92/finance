@@ -60,8 +60,21 @@ class PortfolioDataStore:
         self.save_to_session()  # Save changes to session
     
     def get_portfolio(self):
-        """Get current portfolio"""
-        return self._portfolio.copy()
+        """Get current portfolio with clean data"""
+        if hasattr(self, '_portfolio') and not self._portfolio.empty:
+            # Ensure all data is clean and serializable
+            clean_portfolio = self._portfolio.copy()
+            
+            # Convert any potential problematic columns
+            for col in clean_portfolio.columns:
+                if clean_portfolio[col].dtype == 'object':
+                    clean_portfolio[col] = clean_portfolio[col].astype(str)
+                elif pd.api.types.is_numeric_dtype(clean_portfolio[col]):
+                    clean_portfolio[col] = pd.to_numeric(clean_portfolio[col], errors='coerce').fillna(0)
+            
+            return clean_portfolio
+        else:
+            return pd.DataFrame(columns=self.columns)
     
     def get_total_value(self):
         """Get total portfolio value"""

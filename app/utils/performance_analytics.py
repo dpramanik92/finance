@@ -7,8 +7,10 @@ class PerformanceAnalytics:
     def __init__(self):
         self.risk_free_rate = 0.0725  # 7.25% (10-year Indian govt bond yield)
         self.benchmark = '^NSEI'  # NIFTY 50 index
+        self.initial_value = 100000  # Starting value of 1 lakh
 
     def get_portfolio_returns(self, portfolio_df):
+        print(portfolio_df)
         try:
             if portfolio_df.empty:
                 return self._get_empty_data()
@@ -23,31 +25,110 @@ class PerformanceAnalytics:
             if nifty_data.empty:
                 return self._get_empty_data()
 
-            # Calculate portfolio returns
-            total_value = portfolio_df['value'].sum()
-            portfolio_returns = []
+            # Get portfolio stock data
+            portfolio_values = []
+            benchmark_values = []
             dates = []
+            
+            # Get historical data for all stocks in portfolio
+            portfolio_stocks = {}
+            for _, row in portfolio_df.iterrows():
+                symbol = row['symbol']
+                weight = row['value'] / portfolio_df['value'].sum()  # Portfolio weight
+                try:
+                    stock = yf.Ticker(symbol)
+                    stock_data = stock.history(start=start_date, end=end_date)
+                    if not stock_data.empty:
+                        portfolio_stocks[symbol] = {
+                            'data': stock_data,
+                            'weight': weight
+                        }
+                except Exception as e:
+                    print(f"Error getting data for {symbol}: {e}")
+                    continue
 
-            for date in nifty_data.index:
+            # Get initial prices for normalization
+            initial_nifty_price = nifty_data['Close'].iloc[0]
+            
+            # Calculate portfolio and benchmark values for each date
+            for i, date in enumerate(nifty_data.index):
                 dates.append(date.strftime('%Y-%m-%d'))
-                portfolio_returns.append(float(np.random.uniform(-1, 1)))  # Placeholder for now
+                
+                # Calculate portfolio value on this date
+                portfolio_value = self.initial_value
+                total_weight = 0.0
+                
+                for symbol, stock_info in portfolio_stocks.items():
+                    stock_data = stock_info['data']
+                    weight = stock_info['weight']
+                    
+                    # Get stock price on this date if available
+                    if date in stock_data.index:
+                        # Calculate return from initial price
+                        initial_stock_price = stock_data['Close'].iloc[0]
+                        current_stock_price = stock_data.loc[date, 'Close']
+                        stock_return = (current_stock_price / initial_stock_price) - 1
+                        
+                        # Add weighted contribution to portfolio
+                        portfolio_value += self.initial_value * stock_return * weight
+                        total_weight += weight
+                
+                # If we don't have complete data, use available weights
+                if total_weight > 0:
+                    portfolio_value = self.initial_value + (portfolio_value - self.initial_value) * (1 / total_weight if total_weight < 1 else 1)
+                
+                portfolio_values.append(float(portfolio_value))
+                
+                # Calculate benchmark value (NIFTY 50)
+                current_nifty_price = nifty_data['Close'].iloc[i]
+                nifty_return = (current_nifty_price / initial_nifty_price) - 1
+                benchmark_value = self.initial_value * (1 + nifty_return)
+                benchmark_values.append(float(benchmark_value))
 
-            # Calculate metrics
-            volatility = float(np.std(portfolio_returns) * np.sqrt(252))
-            one_year_return = float(np.mean(portfolio_returns[-252:]) * 252)
+            # Calculate metrics based on returns
+            if len(portfolio_values) > 1:
+                portfolio_returns = [(portfolio_values[i] / portfolio_values[i-1]) - 1 for i in range(1, len(portfolio_values))]
+                benchmark_returns = [(benchmark_values[i] / benchmark_values[i-1]) - 1 for i in range(1, len(benchmark_values))]
+                
+                # Calculate 1 year return (assuming constant portfolio over last 1 year)
+                if len(portfolio_values) >= 252:
+                    # Use last 252 trading days for 1 year return
+                    one_year_return = float(((portfolio_values[-1] / portfolio_values[-252]) - 1) * 100)
+                    
+                    # Calculate volatility using last 1 year daily returns
+                    last_year_returns = portfolio_returns[-251:]  # Last 251 daily returns (252 values = 251 returns)
+                    daily_volatility = np.std(last_year_returns)
+                    portfolio_volatility = float(daily_volatility * np.sqrt(252) * 100)
+                else:
+                    # If less than 1 year of data, use all available data
+                    total_days = len(portfolio_values) - 1
+                    one_year_return = float(((portfolio_values[-1] / portfolio_values[0]) - 1) * 100)
+                    
+                    # Annualize the return for comparison
+                    if total_days > 0:
+                        years = total_days / 252.0
+                        annualized_return = float(((portfolio_values[-1] / portfolio_values[0]) ** (1/years) - 1) * 100)
+                        one_year_return = annualized_return
+                    
+                    # Calculate volatility from all available daily returns
+                    daily_volatility = np.std(portfolio_returns)
+                    portfolio_volatility = float(daily_volatility * np.sqrt(252) * 100)
+            else:
+                portfolio_volatility = 0.0
+                one_year_return = 0.0
 
             return {
                 'portfolio_hist': {
                     'index': dates,
-                    'values': [float(x * 100) for x in portfolio_returns]
+                    'values': portfolio_values
                 },
                 'benchmark_hist': {
                     'index': dates,
-                    'values': [float(x * 100) for x in nifty_data['Close'].pct_change().fillna(0).cumsum()]
+                    'values': benchmark_values
                 },
                 'metrics': {
                     'one_year_return': one_year_return,
-                    'volatility': volatility
+                    'volatility': portfolio_volatility
                 }
             }
         except Exception as e:

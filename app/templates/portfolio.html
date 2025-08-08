@@ -8,7 +8,7 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Total Portfolio Value</h6>
-                    <h3 class="mb-0">₹{{ "{:,.2f}".format(analytics.total_value) }}</h3>
+                    <h3 class="mb-0">₹{{ "%.2f"|format(analytics.total_value|float) }}</h3>
                 </div>
             </div>
         </div>
@@ -17,7 +17,7 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Number of Assets</h6>
-                    <h3 class="mb-0">{{ analytics.asset_count }}</h3>
+                    <h3 class="mb-0">{{ analytics.asset_count|int }}</h3>
                 </div>
             </div>
         </div>
@@ -39,7 +39,7 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Diversification Score</h6>
-                    <h3 class="mb-0">{{ analytics.diversification_score }}/100</h3>
+                    <h3 class="mb-0">{{ "%.1f"|format(analytics.diversification_score|float) }}/100</h3>
                 </div>
             </div>
         </div>
@@ -52,13 +52,13 @@
             <div class="row">
                 <div class="col-md-6">
                     <p><strong>Largest Holding:</strong> {{ analytics.largest_holding }}</p>
-                    <p><strong>Concentration:</strong> {{ analytics.largest_holding_pct }}%</p>
+                    <p><strong>Concentration:</strong> {{ "%.2f"|format(analytics.largest_holding_pct|float) }}%</p>
                 </div>
                 <div class="col-md-6">
                     <div class="progress">
                         <div class="progress-bar" role="progressbar" 
-                             style="width: {{ analytics.diversification_score }}%"
-                             aria-valuenow="{{ analytics.diversification_score }}" 
+                             style="width: {{ analytics.diversification_score|float }}%"
+                             aria-valuenow="{{ analytics.diversification_score|float }}" 
                              aria-valuemin="0" 
                              aria-valuemax="100">
                             Diversification
@@ -92,15 +92,15 @@
                         <tr>
                             <td>{{ holding.symbol }}</td>
                             <td>{{ holding.name }}</td>
-                            <td>{{ holding.quantity }}</td>
-                            <td>₹{{ "%.2f"|format(holding.price) }}</td>
-                            <td>₹{{ "%.2f"|format(holding.value) }}</td>
-                            <td>{{ "%.1f"|format(holding.allocation) }}%</td>
-                            <td class="{{ 'text-success' if holding.day_return > 0 else 'text-danger' }}">
-                                {{ "%+.2f"|format(holding.day_return) }}%
+                            <td>{{ holding.quantity|int }}</td>
+                            <td>₹{{ "%.2f"|format(holding.price|float) }}</td>
+                            <td>₹{{ "%.2f"|format(holding.value|float) }}</td>
+                            <td>{{ "%.1f"|format(holding.allocation|float) }}%</td>
+                            <td class="{{ 'text-success' if holding.day_return|float > 0 else 'text-danger' }}">
+                                {{ "%+.2f"|format(holding.day_return|float) }}%
                             </td>
-                            <td class="{{ 'text-success' if holding.year_return > 0 else 'text-danger' }}">
-                                {{ "%+.2f"|format(holding.year_return) }}%
+                            <td class="{{ 'text-success' if holding.year_return|float > 0 else 'text-danger' }}">
+                                {{ "%+.2f"|format(holding.year_return|float) }}%
                             </td>
                         </tr>
                         {% endfor %}
@@ -116,7 +116,9 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">5-Year Performance vs NIFTY 50</h5>
-                    <canvas id="performanceChart"></canvas>
+                    <div style="position: relative; height: 400px; width: 100%;">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -129,31 +131,17 @@
                     <div class="list-group list-group-flush">
                         <div class="list-group-item">
                             <h6 class="mb-1">1 Year Return</h6>
-                            <p class="mb-0 h4 {{ 'text-success' if performance.metrics.get('one_year_return', 0) > 0 else 'text-danger' }}">
-                                {{ "{:+.2f}%".format(performance.metrics.get('one_year_return', 0)) }}
+                            <p class="mb-0 h4 {{ 'text-success' if performance.metrics.get('one_year_return', 0)|float > 0 else 'text-danger' }}">
+                                {{ "%+.2f"|format(performance.metrics.get('one_year_return', 0)|float) }}%
                             </p>
                         </div>
                         <div class="list-group-item">
                             <h6 class="mb-1">Volatility (Annualized)</h6>
                             <p class="mb-0 h4">
-                                {{ "{:.2f}%".format(performance.metrics.get('volatility', 0)) }}
+                                {{ "%.2f"|format(performance.metrics.get('volatility', 0)|float) }}%
                             </p>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Performance Chart -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Portfolio Performance vs NIFTY 50</h5>
-                <div style="height: 400px">
-                    <canvas id="performanceChart"></canvas>
                 </div>
             </div>
         </div>
@@ -165,89 +153,143 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get data from template and parse it
-    const chartData = {
-        labels: {{ performance.portfolio_hist.index | tojson }},
-        datasets: [
-            {
-                label: 'Portfolio',
-                data: {{ performance.portfolio_hist.values | tojson }},
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1,
-                fill: false
-            },
-            {
-                label: 'NIFTY 50',
-                data: {{ performance.benchmark_hist.values | tojson }},
-                borderColor: 'rgb(255, 99, 132)',
-                tension: 0.1,
-                fill: false
-            }
-        ]
-    };
+    try {
+        // Get chart data from template
+        const portfolioHist = {{ performance.portfolio_hist | tojson | safe }};
+        const benchmarkHist = {{ performance.benchmark_hist | tojson | safe }};
+        
+        console.log('Portfolio hist:', portfolioHist);
+        console.log('Benchmark hist:', benchmarkHist);
+        
+        // Function to convert dates to quarters
+        function formatDateToQuarter(dateStr) {
+            const date = new Date(dateStr);
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1; // getMonth() returns 0-11
+            const quarter = Math.ceil(month / 3);
+            return `Q${quarter} ${year}`;
+        }
+        
+        // Process dates to show only quarterly labels
+        const processedLabels = portfolioHist.index ? portfolioHist.index.map((date, index) => {
+            // Show label only if it's the first occurrence of a quarter
+            const currentQuarter = formatDateToQuarter(date);
+            if (index === 0) return currentQuarter;
+            
+            const previousQuarter = formatDateToQuarter(portfolioHist.index[index - 1]);
+            return currentQuarter !== previousQuarter ? currentQuarter : '';
+        }) : [];
+        
+        // Create chart data
+        const chartData = {
+            labels: portfolioHist.index || [],
+            datasets: [
+                {
+                    label: 'Portfolio',
+                    data: portfolioHist.values || [],
+                    borderColor: '#007AB4',
+                    backgroundColor: '#007AB4',
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 0,          // Hide markers
+                    pointHoverRadius: 4      // Show markers only on hover
+                },
+                {
+                    label: 'NIFTY 50',
+                    data: benchmarkHist.values || [],
+                    borderColor: 'grey',
+                    backgroundColor: 'grey',
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 0,          // Hide markers
+                    pointHoverRadius: 4      // Show markers only on hover
+                }
+            ]
+        };
+        
+        console.log('Chart data:', chartData);
 
-    // Initialize chart only if we have data
-    if (chartData.labels && chartData.labels.length > 0) {
-        const ctx = document.getElementById('performanceChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: chartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'month',
-                            displayFormats: {
-                                month: 'MMM YYYY'
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Date'
-                        }
+        // Initialize chart only if we have data
+        if (chartData.labels && chartData.labels.length > 0) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,  // This allows the chart to fill the container
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
                     },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Return (%)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return value.toFixed(2) + '%';
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Quarter'
+                            },
+                            ticks: {
+                                callback: function(value, index) {
+                                    // Show quarterly labels
+                                    const date = this.getLabelForValue(value);
+                                    if (index % Math.ceil(chartData.labels.length / 20) === 0) {
+                                        return formatDateToQuarter(date);
+                                    }
+                                    return '';
+                                },
+                                maxTicksLimit: 20
                             }
-                        }
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + 
-                                       context.parsed.y.toFixed(2) + '%';
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Portfolio Value (₹)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '₹' + value.toLocaleString();
+                                }
                             }
                         }
                     },
-                    legend: {
-                        display: true,
-                        position: 'top'
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    // Show quarter in tooltip title
+                                    const date = context[0].label;
+                                    return formatDateToQuarter(date);
+                                },
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + 
+                                           context.parsed.y.toFixed(2) + '%';
+                                }
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
                     }
                 }
-            }
-        });
-    } else {
-        // Display a message if no data
+            });
+        } else {
+            // Display a message if no data
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('No performance data available', 
+                        ctx.canvas.width / 2, 
+                        ctx.canvas.height / 2);
+        }
+    } catch (error) {
+        console.error('Chart initialization error:', error);
         const ctx = document.getElementById('performanceChart').getContext('2d');
         ctx.font = '16px Arial';
         ctx.fillStyle = '#666';
         ctx.textAlign = 'center';
-        ctx.fillText('No performance data available', 
+        ctx.fillText('Error loading chart data', 
                     ctx.canvas.width / 2, 
                     ctx.canvas.height / 2);
     }
