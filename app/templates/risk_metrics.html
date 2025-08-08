@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Risk Metrics</h1>
+            
+            <!-- Portfolio Risk Overview -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Portfolio Risk Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <p><strong>Portfolio Volatility:</strong> <span id="portfolio-volatility">--</span></p>
+                                    <p><strong>Value at Risk (95%):</strong> <span id="var-95">--</span></p>
+                                    <p><strong>Beta:</strong> <span id="portfolio-beta">--</span></p>
+                                </div>
+                                <div class="col-6">
+                                    <p><strong>Sharpe Ratio:</strong> <span id="sharpe-ratio">--</span></p>
+                                    <p><strong>Maximum Drawdown:</strong> <span id="max-drawdown">--</span></p>
+                                    <p><strong>Correlation to Market:</strong> <span id="market-correlation">--</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Risk-Return Scatter Plot</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="riskReturnChart" width="400" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Stock Risk Metrics -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Individual Stock Risk Metrics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped" id="riskMetricsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Volatility (%)</th>
+                                            <th>Beta</th>
+                                            <th>VaR (95%)</th>
+                                            <th>Sharpe Ratio</th>
+                                            <th>Max Drawdown (%)</th>
+                                            <th>Risk Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="riskMetricsBody">
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Analysis Controls -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Risk Analysis Settings</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label for="timeHorizon" class="form-label">Time Horizon</label>
+                                    <select class="form-select" id="timeHorizon">
+                                        <option value="1M">1 Month</option>
+                                        <option value="3M">3 Months</option>
+                                        <option value="6M" selected>6 Months</option>
+                                        <option value="1Y">1 Year</option>
+                                        <option value="2Y">2 Years</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="confidenceLevel" class="form-label">Confidence Level</label>
+                                    <select class="form-select" id="confidenceLevel">
+                                        <option value="90">90%</option>
+                                        <option value="95" selected>95%</option>
+                                        <option value="99">99%</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="benchmarkIndex" class="form-label">Benchmark</label>
+                                    <select class="form-select" id="benchmarkIndex">
+                                        <option value="^NSEI" selected>NIFTY 50</option>
+                                        <option value="^NSEBANK">BANK NIFTY</option>
+                                        <option value="^NSEIT">NIFTY IT</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-primary" id="updateRiskMetrics">Update Analysis</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/risk-metrics.js') }}"></script>
+{% endblock %}
