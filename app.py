@@ -24,6 +24,35 @@ def create_app():
     
     Session(app)
     
+    # Add custom filters for Indian number formatting
+    @app.template_filter('indian_currency')
+    def indian_currency_filter(value):
+        """Format number as Indian currency"""
+        try:
+            num = float(value)
+            if num >= 10000000:  # 1 crore
+                return f"₹{num/10000000:.2f} Cr"
+            elif num >= 100000:  # 1 lakh
+                return f"₹{num/100000:.2f} L"
+            else:
+                return f"₹{num:,.2f}"
+        except (ValueError, TypeError):
+            return "₹0.00"
+    
+    @app.template_filter('indian_number')
+    def indian_number_filter(value):
+        """Format number in Indian style"""
+        try:
+            num = int(value)
+            if num >= 10000000:  # 1 crore
+                return f"{num/10000000:.1f} Cr"
+            elif num >= 100000:  # 1 lakh
+                return f"{num/100000:.1f} L"
+            else:
+                return f"{num:,}"
+        except (ValueError, TypeError):
+            return "0"
+    
     # Register blueprints
     app.register_blueprint(main)
     app.register_blueprint(stock_bp)

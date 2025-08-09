@@ -8,7 +8,7 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Total Portfolio Value</h6>
-                    <h3 class="mb-0">₹{{ "%.2f"|format(analytics.total_value|float) }}</h3>
+                    <h3 class="mb-0" id="totalValue">₹{{ analytics.total_value|float }}</h3>
                 </div>
             </div>
         </div>
@@ -17,7 +17,7 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Number of Assets</h6>
-                    <h3 class="mb-0">{{ analytics.asset_count|int }}</h3>
+                    <h3 class="mb-0" id="assetCount">{{ analytics.asset_count|int }}</h3>
                 </div>
             </div>
         </div>
@@ -26,11 +26,30 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Risk Level</h6>
-                    <h3 class="mb-0 {% if analytics.risk_level == 'High' %}text-danger
-                                    {% elif analytics.risk_level == 'Medium' %}text-warning
-                                    {% else %}text-success{% endif %}">
-                        {{ analytics.risk_level }}
-                    </h3>
+                    <div class="speedometer-container mt-2">
+                        {% set risk_score = 100 - analytics.diversification_score|float %}
+                        {% if risk_score <= 20 %}
+                            {% set risk_text = "Very Low" %}
+                            {% set risk_color = "#28a745" %}
+                        {% elif risk_score <= 40 %}
+                            {% set risk_text = "Low" %}
+                            {% set risk_color = "#17a2b8" %}
+                        {% elif risk_score <= 60 %}
+                            {% set risk_text = "Moderate" %}
+                            {% set risk_color = "#ffc107" %}
+                        {% elif risk_score <= 80 %}
+                            {% set risk_text = "High" %}
+                            {% set risk_color = "#fd7e14" %}
+                        {% else %}
+                            {% set risk_text = "Very High" %}
+                            {% set risk_color = "#dc3545" %}
+                        {% endif %}
+                        
+                        <canvas id="riskSpeedometer" width="200" height="120" data-risk="{{ risk_score }}" data-color="{{ risk_color }}"></canvas>
+                        <div class="text-center mt-2">
+                            <small class="fw-bold" style="color: {{ risk_color }}">{{ risk_text }}</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -39,7 +58,12 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Diversification Score</h6>
-                    <h3 class="mb-0">{{ "%.1f"|format(analytics.diversification_score|float) }}/100</h3>
+                    <h3 class="mb-0 {% if analytics.diversification_score|float >= 80 %}text-success
+                                    {% elif analytics.diversification_score|float >= 60 %}text-warning
+                                    {% else %}text-danger{% endif %}">
+                        {{ "%.1f"|format(analytics.diversification_score|float) }}/100
+                    </h3>
+                    <small class="text-muted">HHI: {{ "%.3f"|format(analytics.hhi_score|float) }}</small>
                 </div>
             </div>
         </div>
@@ -53,17 +77,31 @@
                 <div class="col-md-6">
                     <p><strong>Largest Holding:</strong> {{ analytics.largest_holding }}</p>
                     <p><strong>Concentration:</strong> {{ "%.2f"|format(analytics.largest_holding_pct|float) }}%</p>
+                    <p><strong>HHI Score:</strong> {{ "%.3f"|format(analytics.hhi_score|float) }}</p>
+                    <small class="text-muted">
+                        Lower HHI = Better Diversification<br>
+                        HHI Range: 0 (perfect) to 1 (concentrated)
+                    </small>
                 </div>
                 <div class="col-md-6">
-                    <div class="progress">
-                        <div class="progress-bar" role="progressbar" 
+                    <div class="progress mb-2">
+                        <div class="progress-bar {% if analytics.diversification_score|float >= 80 %}bg-success
+                                                  {% elif analytics.diversification_score|float >= 60 %}bg-warning
+                                                  {% else %}bg-danger{% endif %}" 
+                             role="progressbar" 
                              style="width: {{ analytics.diversification_score|float }}%"
                              aria-valuenow="{{ analytics.diversification_score|float }}" 
                              aria-valuemin="0" 
                              aria-valuemax="100">
-                            Diversification
+                            {{ "%.1f"|format(analytics.diversification_score|float) }}%
                         </div>
                     </div>
+                    <small class="text-muted">
+                        {% if analytics.diversification_score|float >= 80 %}Well Diversified
+                        {% elif analytics.diversification_score|float >= 60 %}Moderately Diversified
+                        {% else %}Poorly Diversified
+                        {% endif %}
+                    </small>
                 </div>
             </div>
         </div>
@@ -92,9 +130,9 @@
                         <tr>
                             <td>{{ holding.symbol }}</td>
                             <td>{{ holding.name }}</td>
-                            <td>{{ holding.quantity|int }}</td>
-                            <td>₹{{ "%.2f"|format(holding.price|float) }}</td>
-                            <td>₹{{ "%.2f"|format(holding.value|float) }}</td>
+                            <td class="indian-number">{{ holding.quantity|int }}</td>
+                            <td class="indian-currency">{{ holding.price|float }}</td>
+                            <td class="indian-currency">{{ holding.value|float }}</td>
                             <td>{{ "%.1f"|format(holding.allocation|float) }}%</td>
                             <td class="{{ 'text-success' if holding.day_return|float > 0 else 'text-danger' }}">
                                 {{ "%+.2f"|format(holding.day_return|float) }}%
@@ -141,6 +179,21 @@
                                 {{ "%.2f"|format(performance.metrics.get('volatility', 0)|float) }}%
                             </p>
                         </div>
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Sharpe Ratio (Annualized)</h6>
+                            <p class="mb-0 h4 {{ 'text-success' if performance.metrics.get('sharpe_ratio', 0)|float > 1 else ('text-warning' if performance.metrics.get('sharpe_ratio', 0)|float > 0.5 else 'text-danger') }}">
+                                {{ "%.2f"|format(performance.metrics.get('sharpe_ratio', 0)|float) }}
+                            </p>
+                            <small class="text-muted">
+                                {% set sharpe = performance.metrics.get('sharpe_ratio', 0)|float %}
+                                {% if sharpe > 2 %}Excellent
+                                {% elif sharpe > 1 %}Good
+                                {% elif sharpe > 0.5 %}Fair
+                                {% elif sharpe > 0 %}Poor
+                                {% else %}Very Poor
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -148,37 +201,207 @@
     </div>
 </div>
 
+<!-- Add custom CSS for speedometer -->
+<style>
+.speedometer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 120px;
+    justify-content: center;
+}
+
+#riskSpeedometer {
+    max-width: 100%;
+    height: auto;
+}
+</style>
+
 <!-- Add Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Function to draw speedometer
+    function drawSpeedometer(canvasId, riskScore, color) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height - 20;
+        const radius = 80;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw speedometer arc (semicircle)
+        const startAngle = Math.PI; // 180 degrees
+        const endAngle = 2 * Math.PI; // 360 degrees
+        
+        // Create gradient for the arc
+        const gradient = ctx.createLinearGradient(centerX - radius, centerY, centerX + radius, centerY);
+        gradient.addColorStop(0, '#28a745'); // Green (Low Risk)
+        gradient.addColorStop(0.25, '#17a2b8'); // Blue
+        gradient.addColorStop(0.5, '#ffc107'); // Yellow (Moderate)
+        gradient.addColorStop(0.75, '#fd7e14'); // Orange
+        gradient.addColorStop(1, '#dc3545'); // Red (High Risk)
+        
+        // Draw outer arc
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.lineWidth = 20;
+        ctx.strokeStyle = gradient;
+        ctx.stroke();
+        
+        // Draw inner arc (background)
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius - 30, startAngle, endAngle);
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = '#f8f9fa';
+        ctx.stroke();
+        
+        // Draw tick marks
+        for (let i = 0; i <= 10; i++) {
+            const angle = startAngle + (i / 10) * (endAngle - startAngle);
+            const x1 = centerX + (radius - 35) * Math.cos(angle);
+            const y1 = centerY + (radius - 35) * Math.sin(angle);
+            const x2 = centerX + (radius - 25) * Math.cos(angle);
+            const y2 = centerY + (radius - 25) * Math.sin(angle);
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#6c757d';
+            ctx.stroke();
+        }
+        
+        // Draw labels
+        ctx.fillStyle = '#6c757d';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        
+        // Risk level labels
+        const labels = ['Low', 'Med', 'High'];
+        for (let i = 0; i < labels.length; i++) {
+            const angle = startAngle + ((i + 1) / 4) * (endAngle - startAngle);
+            const x = centerX + (radius - 45) * Math.cos(angle);
+            const y = centerY + (radius - 45) * Math.sin(angle) + 3;
+            ctx.fillText(labels[i], x, y);
+        }
+        
+        // Calculate needle angle based on risk score
+        const needleAngle = startAngle + (riskScore / 100) * (endAngle - startAngle);
+        
+        // Draw needle
+        const needleLength = radius - 40;
+        const needleX = centerX + needleLength * Math.cos(needleAngle);
+        const needleY = centerY + needleLength * Math.sin(needleAngle);
+        
+        // Needle shadow
+        ctx.beginPath();
+        ctx.moveTo(centerX + 2, centerY + 2);
+        ctx.lineTo(needleX + 2, needleY + 2);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.stroke();
+        
+        // Needle
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(needleX, needleY);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        
+        // Center circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+        
+        // Draw risk score text
+        ctx.fillStyle = color;
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.round(riskScore) + '%', centerX, centerY + 25);
+    }
+    
+    // Initialize speedometer
+    const speedometerCanvas = document.getElementById('riskSpeedometer');
+    if (speedometerCanvas) {
+        const riskScore = parseFloat(speedometerCanvas.dataset.risk) || 0;
+        const color = speedometerCanvas.dataset.color || '#6c757d';
+        drawSpeedometer('riskSpeedometer', riskScore, color);
+    }
+
+    // Function to format numbers in Indian style
+    function formatIndianCurrency(num) {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            maximumFractionDigits: 0
+        }).format(num);
+    }
+    
+    function formatIndianNumber(num) {
+        return new Intl.NumberFormat('en-IN').format(num);
+    }
+    
+    function formatIndianCurrencyWithDecimals(num) {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(num);
+    }
+    
+    // Format portfolio overview values
+    const totalValueElement = document.getElementById('totalValue');
+    if (totalValueElement) {
+        const value = parseFloat(totalValueElement.textContent.replace('₹', ''));
+        totalValueElement.textContent = formatIndianCurrencyWithDecimals(value);
+    }
+    
+    const assetCountElement = document.getElementById('assetCount');
+    if (assetCountElement) {
+        const value = parseInt(assetCountElement.textContent);
+        assetCountElement.textContent = formatIndianNumber(value);
+    }
+    
+    // Format table values
+    document.querySelectorAll('.indian-currency').forEach(cell => {
+        const value = parseFloat(cell.textContent);
+        if (!isNaN(value)) {
+            cell.textContent = formatIndianCurrencyWithDecimals(value);
+        }
+    });
+    
+    document.querySelectorAll('.indian-number').forEach(cell => {
+        const value = parseInt(cell.textContent);
+        if (!isNaN(value)) {
+            cell.textContent = formatIndianNumber(value);
+        }
+    });
+
     try {
         // Get chart data from template
         const portfolioHist = {{ performance.portfolio_hist | tojson | safe }};
         const benchmarkHist = {{ performance.benchmark_hist | tojson | safe }};
         
-        console.log('Portfolio hist:', portfolioHist);
-        console.log('Benchmark hist:', benchmarkHist);
-        
         // Function to convert dates to quarters
         function formatDateToQuarter(dateStr) {
             const date = new Date(dateStr);
             const year = date.getFullYear();
-            const month = date.getMonth() + 1; // getMonth() returns 0-11
+            const month = date.getMonth() + 1;
             const quarter = Math.ceil(month / 3);
             return `Q${quarter} ${year}`;
         }
-        
-        // Process dates to show only quarterly labels
-        const processedLabels = portfolioHist.index ? portfolioHist.index.map((date, index) => {
-            // Show label only if it's the first occurrence of a quarter
-            const currentQuarter = formatDateToQuarter(date);
-            if (index === 0) return currentQuarter;
-            
-            const previousQuarter = formatDateToQuarter(portfolioHist.index[index - 1]);
-            return currentQuarter !== previousQuarter ? currentQuarter : '';
-        }) : [];
         
         // Create chart data
         const chartData = {
@@ -191,8 +414,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     backgroundColor: '#007AB4',
                     tension: 0.1,
                     fill: false,
-                    pointRadius: 0,          // Hide markers
-                    pointHoverRadius: 4      // Show markers only on hover
+                    pointRadius: 0,
+                    pointHoverRadius: 4
                 },
                 {
                     label: 'NIFTY 50',
@@ -201,13 +424,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     backgroundColor: 'grey',
                     tension: 0.1,
                     fill: false,
-                    pointRadius: 0,          // Hide markers
-                    pointHoverRadius: 4      // Show markers only on hover
+                    pointRadius: 0,
+                    pointHoverRadius: 4
                 }
             ]
         };
-        
-        console.log('Chart data:', chartData);
 
         // Initialize chart only if we have data
         if (chartData.labels && chartData.labels.length > 0) {
@@ -217,7 +438,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 data: chartData,
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,  // This allows the chart to fill the container
+                    maintainAspectRatio: false,
                     interaction: {
                         intersect: false,
                         mode: 'index'
@@ -230,7 +451,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             },
                             ticks: {
                                 callback: function(value, index) {
-                                    // Show quarterly labels
                                     const date = this.getLabelForValue(value);
                                     if (index % Math.ceil(chartData.labels.length / 20) === 0) {
                                         return formatDateToQuarter(date);
@@ -247,7 +467,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             },
                             ticks: {
                                 callback: function(value) {
-                                    return '₹' + value.toLocaleString();
+                                    return formatIndianCurrency(value);
                                 }
                             }
                         }
@@ -256,13 +476,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         tooltip: {
                             callbacks: {
                                 title: function(context) {
-                                    // Show quarter in tooltip title
                                     const date = context[0].label;
                                     return formatDateToQuarter(date);
                                 },
                                 label: function(context) {
                                     return context.dataset.label + ': ' + 
-                                           context.parsed.y.toFixed(2) + '%';
+                                           formatIndianCurrency(context.parsed.y);
                                 }
                             }
                         },
@@ -274,7 +493,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         } else {
-            // Display a message if no data
             const ctx = document.getElementById('performanceChart').getContext('2d');
             ctx.font = '16px Arial';
             ctx.fillStyle = '#666';
@@ -285,13 +503,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     } catch (error) {
         console.error('Chart initialization error:', error);
-        const ctx = document.getElementById('performanceChart').getContext('2d');
-        ctx.font = '16px Arial';
-        ctx.fillStyle = '#666';
-        ctx.textAlign = 'center';
-        ctx.fillText('Error loading chart data', 
-                    ctx.canvas.width / 2, 
-                    ctx.canvas.height / 2);
     }
 });
 </script>

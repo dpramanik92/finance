@@ -99,6 +99,17 @@ class PerformanceAnalytics:
                     last_year_returns = portfolio_returns[-251:]  # Last 251 daily returns (252 values = 251 returns)
                     daily_volatility = np.std(last_year_returns)
                     portfolio_volatility = float(daily_volatility * np.sqrt(252) * 100)
+                    
+                    # Calculate annualized Sharpe ratio using last 1 year data
+                    daily_excess_returns = [r - (self.risk_free_rate / 252) for r in last_year_returns]  # Daily risk-free rate
+                    mean_excess_return = np.mean(daily_excess_returns)
+                    std_excess_return = np.std(daily_excess_returns)
+                    
+                    if std_excess_return > 0:
+                        sharpe_ratio = float((mean_excess_return / std_excess_return) * np.sqrt(252))  # Annualized Sharpe ratio
+                    else:
+                        sharpe_ratio = 0.0
+                        
                 else:
                     # If less than 1 year of data, use all available data
                     total_days = len(portfolio_values) - 1
@@ -113,9 +124,21 @@ class PerformanceAnalytics:
                     # Calculate volatility from all available daily returns
                     daily_volatility = np.std(portfolio_returns)
                     portfolio_volatility = float(daily_volatility * np.sqrt(252) * 100)
+                    
+                    # Calculate Sharpe ratio using all available data
+                    daily_excess_returns = [r - (self.risk_free_rate / 252) for r in portfolio_returns]
+                    mean_excess_return = np.mean(daily_excess_returns)
+                    std_excess_return = np.std(daily_excess_returns)
+                    
+                    if std_excess_return > 0:
+                        sharpe_ratio = float((mean_excess_return / std_excess_return) * np.sqrt(252))
+                    else:
+                        sharpe_ratio = 0.0
+                        
             else:
                 portfolio_volatility = 0.0
                 one_year_return = 0.0
+                sharpe_ratio = 0.0
 
             return {
                 'portfolio_hist': {
@@ -128,7 +151,8 @@ class PerformanceAnalytics:
                 },
                 'metrics': {
                     'one_year_return': one_year_return,
-                    'volatility': portfolio_volatility
+                    'volatility': portfolio_volatility,
+                    'sharpe_ratio': sharpe_ratio
                 }
             }
         except Exception as e:
@@ -139,5 +163,5 @@ class PerformanceAnalytics:
         return {
             'portfolio_hist': {'index': [], 'values': []},
             'benchmark_hist': {'index': [], 'values': []},
-            'metrics': {'one_year_return': 0.0, 'volatility': 0.0}
+            'metrics': {'one_year_return': 0.0, 'volatility': 0.0, 'sharpe_ratio': 0.0}
         }

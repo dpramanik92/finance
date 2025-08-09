@@ -30,12 +30,51 @@ def portfolio():
         portfolio_store.load_from_session()
         portfolio_df = portfolio_store.get_portfolio()
         
+        # Calculate HHI diversification score
+        def calculate_hhi_diversification_score(portfolio_df):
+            """
+            Calculate diversification score using Herfindahl-Hirschman Index (HHI)
+            HHI = Sum of (market share)^2 for each holding
+            Diversification Score = (1 - normalized HHI) * 100
+            """
+            if portfolio_df.empty:
+                return 0.0
+            
+            # Calculate portfolio weights (market shares)
+            total_value = portfolio_df['value'].sum()
+            if total_value == 0:
+                return 0.0
+            
+            portfolio_df['weight'] = portfolio_df['value'] / total_value
+            
+            # Calculate HHI
+            hhi = (portfolio_df['weight'] ** 2).sum()
+            
+            # Calculate theoretical minimum HHI (perfectly diversified)
+            # This would be 1/n where n is number of holdings
+            n_holdings = len(portfolio_df)
+            min_hhi = 1.0 / n_holdings if n_holdings > 0 else 1.0
+            
+            # Calculate theoretical maximum HHI (perfectly concentrated) = 1.0
+            max_hhi = 1.0
+            
+            # Normalize HHI to 0-100 scale
+            # Higher diversification = lower HHI = higher score
+            if max_hhi > min_hhi:
+                normalized_hhi = (hhi - min_hhi) / (max_hhi - min_hhi)
+                diversification_score = (1 - normalized_hhi) * 100
+            else:
+                diversification_score = 100.0  # Perfect diversification
+            
+            return float(max(0, min(100, diversification_score)))
+        
         # Initialize analytics with safe defaults
         analytics = {
             'total_value': 0.0,
             'asset_count': 0,
             'risk_level': 'N/A',
             'diversification_score': 0.0,
+            'hhi_score': 0.0,
             'largest_holding': 'None',
             'largest_holding_pct': 0.0
         }
@@ -43,11 +82,26 @@ def portfolio():
         # Calculate analytics if portfolio exists
         if not portfolio_df.empty:
             total_value = float(portfolio_df['value'].sum())
+            diversification_score = calculate_hhi_diversification_score(portfolio_df)
+            
+            # Calculate actual HHI for display
+            portfolio_weights = portfolio_df['value'] / total_value
+            hhi_score = float((portfolio_weights ** 2).sum())
+            
+            # Determine risk level based on diversification score
+            if diversification_score >= 80:
+                risk_level = 'Low'
+            elif diversification_score >= 60:
+                risk_level = 'Medium'
+            else:
+                risk_level = 'High'
+            
             analytics.update({
                 'total_value': total_value,
                 'asset_count': len(portfolio_df),
-                'risk_level': 'Low',
-                'diversification_score': 100.0,
+                'risk_level': risk_level,
+                'diversification_score': diversification_score,
+                'hhi_score': hhi_score,
                 'largest_holding': str(portfolio_df.loc[portfolio_df['value'].idxmax(), 'symbol']),
                 'largest_holding_pct': float((portfolio_df['value'].max() / total_value) * 100)
             })

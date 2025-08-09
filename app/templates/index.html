@@ -118,6 +118,49 @@
     </div>
 </div>
 
+<!-- Add Indian number formatting script -->
+<script>
+// Function to format numbers in Indian style
+function formatIndianNumber(num) {
+    return new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(num);
+}
+
+// Function to format Indian currency
+function formatIndianCurrency(num) {
+    return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(num);
+}
+
+// Function to format quantity (no decimals)
+function formatQuantity(num) {
+    return new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(num);
+}
+
+// Function to format percentage
+function formatPercentage(num) {
+    return new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(num) + '%';
+}
+
+// Override global formatting for this page
+window.formatCurrency = formatIndianCurrency;
+window.formatNumber = formatIndianNumber;
+window.formatQuantity = formatQuantity;
+window.formatPercentage = formatPercentage;
+</script>
+
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
