@@ -72,9 +72,10 @@
     <!-- Risk Analysis -->
     <div class="card mb-4">
         <div class="card-body">
-            <h5 class="card-title">Risk Analysis</h5>
+            <h5 class="card-title">Risk Analysis (5-Year Period)</h5>
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <h6 class="text-muted">Portfolio Composition</h6>
                     <p><strong>Largest Holding:</strong> {{ analytics.largest_holding }}</p>
                     <p><strong>Concentration:</strong> {{ "%.2f"|format(analytics.largest_holding_pct|float) }}%</p>
                     <p><strong>HHI Score:</strong> {{ "%.3f"|format(analytics.hhi_score|float) }}</p>
@@ -83,7 +84,39 @@
                         HHI Range: 0 (perfect) to 1 (concentrated)
                     </small>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <h6 class="text-muted">Risk Metrics</h6>
+                    <p><strong>Portfolio Beta:</strong> 
+                        <span class="{% if performance.metrics.beta|float > 1.2 %}text-danger
+                                     {% elif performance.metrics.beta|float > 0.8 %}text-warning
+                                     {% else %}text-success{% endif %}">
+                            {{ "%.2f"|format(performance.metrics.beta|float) }}
+                        </span>
+                    </p>
+                    <p><strong>Max Drawdown:</strong> 
+                        <span class="{% if performance.metrics.max_drawdown|float < -20 %}text-danger
+                                     {% elif performance.metrics.max_drawdown|float < -10 %}text-warning
+                                     {% else %}text-success{% endif %}">
+                            {{ "%.2f"|format(performance.metrics.max_drawdown|float) }}%
+                        </span>
+                    </p>
+                    <small class="text-muted">
+                        Beta > 1: More volatile than market<br>
+                        Max Drawdown: Worst peak-to-trough decline
+                    </small>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-muted">Market Correlation</h6>
+                    <p><strong>Correlation to NIFTY 50:</strong> 
+                        <span class="{% if performance.metrics.correlation|float > 0.8 %}text-warning
+                                     {% elif performance.metrics.correlation|float > 0.5 %}text-info
+                                     {% else %}text-success{% endif %}">
+                            {{ "%.2f"|format(performance.metrics.correlation|float) }}
+                        </span>
+                    </p>
+                    
+                    <!-- Diversification Progress Bar -->
+                    <h6 class="text-muted mt-3">Diversification Level</h6>
                     <div class="progress mb-2">
                         <div class="progress-bar {% if analytics.diversification_score|float >= 80 %}bg-success
                                                   {% elif analytics.diversification_score|float >= 60 %}bg-warning
@@ -142,12 +175,21 @@
                             </td>
                         </tr>
                         {% endfor %}
+                        {% if not portfolio %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                                <p>No holdings in portfolio. Add stocks from the <a href="/">Dashboard</a>.</p>
+                            </td>
+                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- Performance Section -->
     <div class="row mt-4">
         <!-- Performance Chart -->
         <div class="col-md-8">
@@ -173,14 +215,16 @@
                                 {{ "%+.2f"|format(performance.metrics.get('one_year_return', 0)|float) }}%
                             </p>
                         </div>
+                        
                         <div class="list-group-item">
                             <h6 class="mb-1">Volatility (Annualized)</h6>
-                            <p class="mb-0 h4">
+                            <p class="mb-0 h4 {{ 'text-danger' if performance.metrics.get('volatility', 0)|float > 25 else ('text-warning' if performance.metrics.get('volatility', 0)|float > 15 else 'text-success') }}">
                                 {{ "%.2f"|format(performance.metrics.get('volatility', 0)|float) }}%
                             </p>
                         </div>
+                        
                         <div class="list-group-item">
-                            <h6 class="mb-1">Sharpe Ratio (Annualized)</h6>
+                            <h6 class="mb-1">Sharpe Ratio</h6>
                             <p class="mb-0 h4 {{ 'text-success' if performance.metrics.get('sharpe_ratio', 0)|float > 1 else ('text-warning' if performance.metrics.get('sharpe_ratio', 0)|float > 0.5 else 'text-danger') }}">
                                 {{ "%.2f"|format(performance.metrics.get('sharpe_ratio', 0)|float) }}
                             </p>
@@ -194,6 +238,45 @@
                                 {% endif %}
                             </small>
                         </div>
+                        
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Maximum Drawdown</h6>
+                            <p class="mb-0 h4 {{ 'text-danger' if performance.metrics.get('max_drawdown', 0)|float < -20 else ('text-warning' if performance.metrics.get('max_drawdown', 0)|float < -10 else 'text-success') }}">
+                                {{ "%.2f"|format(performance.metrics.get('max_drawdown', 0)|float) }}%
+                            </p>
+                            <small class="text-muted">
+                                {% set drawdown = performance.metrics.get('max_drawdown', 0)|float %}
+                                {% if drawdown > -5 %}Excellent
+                                {% elif drawdown > -10 %}Good
+                                {% elif drawdown > -20 %}Moderate
+                                {% else %}High Risk
+                                {% endif %}
+                            </small>
+                        </div>
+                        
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Value at Risk (95%)</h6>
+                            <p class="mb-0 h4 text-danger">
+                                {{ "%.2f"|format(performance.metrics.get('var_95_percent', 0)|float) }}%
+                            </p>
+                            <small class="text-danger fw-bold">
+                                {{ performance.metrics.get('var_95_value', 0)|signed_currency }}
+                            </small>
+                            <br>
+                            <small class="text-muted">Daily loss exceeded 5% of the time</small>
+                        </div>
+
+                        <div class="list-group-item">
+                            <h6 class="mb-1">Value at Risk (99%)</h6>
+                            <p class="mb-0 h4 text-danger">
+                                {{ "%.2f"|format(performance.metrics.get('var_99_percent', 0)|float) }}%
+                            </p>
+                            <small class="text-danger fw-bold">
+                                {{ performance.metrics.get('var_99_value', 0)|signed_currency }}
+                            </small>
+                            <br>
+                            <small class="text-muted">Daily loss exceeded 1% of the time</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -201,7 +284,7 @@
     </div>
 </div>
 
-<!-- Add custom CSS for speedometer -->
+<!-- Custom CSS -->
 <style>
 .speedometer-container {
     display: flex;
@@ -214,6 +297,45 @@
 #riskSpeedometer {
     max-width: 100%;
     height: auto;
+}
+
+.table th {
+    font-weight: 600;
+    color: #495057;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+.list-group-item {
+    border-left: 0;
+    border-right: 0;
+    padding: 1rem 0;
+}
+
+.progress {
+    height: 0.75rem;
+}
+
+@media (max-width: 768px) {
+    .speedometer-container {
+        min-height: 100px;
+    }
+    
+    #riskSpeedometer {
+        width: 150px;
+        height: 90px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
 }
 </style>
 
@@ -364,14 +486,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Format portfolio overview values
     const totalValueElement = document.getElementById('totalValue');
     if (totalValueElement) {
-        const value = parseFloat(totalValueElement.textContent.replace('₹', ''));
-        totalValueElement.textContent = formatIndianCurrencyWithDecimals(value);
+        const value = parseFloat(totalValueElement.textContent.replace('₹', '').replace(/,/g, ''));
+        if (!isNaN(value)) {
+            totalValueElement.textContent = formatIndianCurrencyWithDecimals(value);
+        }
     }
     
     const assetCountElement = document.getElementById('assetCount');
     if (assetCountElement) {
         const value = parseInt(assetCountElement.textContent);
-        assetCountElement.textContent = formatIndianNumber(value);
+        if (!isNaN(value)) {
+            assetCountElement.textContent = formatIndianNumber(value);
+        }
     }
     
     // Format table values
@@ -389,6 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Initialize performance chart
     try {
         // Get chart data from template
         const portfolioHist = {{ performance.portfolio_hist | tojson | safe }};
@@ -411,21 +538,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Portfolio',
                     data: portfolioHist.values || [],
                     borderColor: '#007AB4',
-                    backgroundColor: '#007AB4',
+                    backgroundColor: 'rgba(0, 122, 180, 0.1)',
                     tension: 0.1,
                     fill: false,
                     pointRadius: 0,
-                    pointHoverRadius: 4
+                    pointHoverRadius: 6,
+                    borderWidth: 3
                 },
                 {
                     label: 'NIFTY 50',
                     data: benchmarkHist.values || [],
-                    borderColor: 'grey',
-                    backgroundColor: 'grey',
+                    borderColor: '#6c757d',
+                    backgroundColor: 'rgba(108, 117, 125, 0.1)',
                     tension: 0.1,
                     fill: false,
                     pointRadius: 0,
-                    pointHoverRadius: 4
+                    pointHoverRadius: 6,
+                    borderWidth: 2,
+                    borderDash: [5, 5]
                 }
             ]
         };
@@ -447,33 +577,52 @@ document.addEventListener('DOMContentLoaded', function() {
                         x: {
                             title: {
                                 display: true,
-                                text: 'Quarter'
+                                text: 'Time Period',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
                             },
                             ticks: {
                                 callback: function(value, index) {
                                     const date = this.getLabelForValue(value);
-                                    if (index % Math.ceil(chartData.labels.length / 20) === 0) {
+                                    if (index % Math.ceil(chartData.labels.length / 15) === 0) {
                                         return formatDateToQuarter(date);
                                     }
                                     return '';
                                 },
-                                maxTicksLimit: 20
+                                maxTicksLimit: 15
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
                             }
                         },
                         y: {
                             title: {
                                 display: true,
-                                text: 'Portfolio Value (₹)'
+                                text: 'Portfolio Value (₹)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
                             },
                             ticks: {
                                 callback: function(value) {
                                     return formatIndianCurrency(value);
                                 }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
                             }
                         }
                     },
                     plugins: {
                         tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(0,0,0,0.1)',
+                            borderWidth: 1,
                             callbacks: {
                                 title: function(context) {
                                     const date = context[0].label;
@@ -487,22 +636,43 @@ document.addEventListener('DOMContentLoaded', function() {
                         },
                         legend: {
                             display: true,
-                            position: 'top'
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            }
                         }
                     }
                 }
             });
         } else {
+            // Show no data message
             const ctx = document.getElementById('performanceChart').getContext('2d');
-            ctx.font = '16px Arial';
-            ctx.fillStyle = '#666';
+            ctx.fillStyle = '#6c757d';
+            ctx.font = '18px Arial';
             ctx.textAlign = 'center';
             ctx.fillText('No performance data available', 
                         ctx.canvas.width / 2, 
-                        ctx.canvas.height / 2);
+                        ctx.canvas.height / 2 - 20);
+            ctx.font = '14px Arial';
+            ctx.fillText('Add stocks to your portfolio to see performance analytics', 
+                        ctx.canvas.width / 2, 
+                        ctx.canvas.height / 2 + 10);
         }
     } catch (error) {
         console.error('Chart initialization error:', error);
+        // Show error message on chart
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        ctx.fillStyle = '#dc3545';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Error loading chart data', 
+                    ctx.canvas.width / 2, 
+                    ctx.canvas.height / 2);
     }
 });
 </script>

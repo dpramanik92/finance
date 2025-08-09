@@ -94,6 +94,29 @@ class PortfolioDataStore:
         year_return = (weights * self._portfolio['year_return']).sum()
         
         return float(day_return), float(year_return)
+    
+    def get_day_return_value(self):
+        """Get 1-day return in value terms (₹)"""
+        if self._portfolio.empty:
+            return 0.0
+            
+        total_value = self.get_total_value()
+        day_return_pct = self.get_returns()[0]  # Get day return percentage
+        
+        # Calculate value change: (current_value * return_percentage) / 100
+        day_return_value = (total_value * day_return_pct) / 100
+        
+        return float(day_return_value)
+    
+    def get_benchmark_day_return_value(self, benchmark_day_return_pct):
+        """Calculate benchmark return in value terms using portfolio value"""
+        if self._portfolio.empty:
+            return 0.0
+            
+        total_value = self.get_total_value()
+        benchmark_return_value = (total_value * benchmark_day_return_pct) / 100
+        
+        return float(benchmark_return_value)
 
 # Create global instance
 portfolio_store = PortfolioDataStore()

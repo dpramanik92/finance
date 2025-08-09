@@ -17,6 +17,10 @@
     .table td {
         vertical-align: middle;
     }
+    .return-value {
+        font-size: 0.8rem;
+        margin-top: 2px;
+    }
 </style>
 
 <!-- Stock Selection Form -->
@@ -45,7 +49,7 @@
                 <h5 class="card-title">Portfolio Value</h5>
                 <h2 id="portfolioValue">₹0.00</h2>
                 <div class="row mt-3">
-                    <div class="col-6">
+                    <div class="col-4">
                         <div class="d-flex align-items-center">
                             <span id="dayReturnIcon" class="me-2">
                                 <i class="fas fa-arrow-up text-success"></i>
@@ -53,10 +57,13 @@
                             <div>
                                 <h6 class="mb-0" id="dayReturn">0.00%</h6>
                                 <small class="text-muted">1 Day Return</small>
+                                <div id="portfolioDayReturnValue" class="return-value">
+                                    <!-- Portfolio day return value will be displayed here -->
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
                         <div class="d-flex align-items-center">
                             <span id="yearReturnIcon" class="me-2">
                                 <i class="fas fa-arrow-up text-success"></i>
@@ -65,6 +72,31 @@
                                 <h6 class="mb-0" id="yearReturn">0.00%</h6>
                                 <small class="text-muted">1 Year Return</small>
                             </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">
+                                <i class="fas fa-exclamation-triangle text-danger"></i>
+                            </span>
+                            <div id="portfolioVaR">
+                                <h6 class="mb-0 text-danger">0.00%</h6>
+                                <small class="text-muted">VaR (95%)</small>
+                                <div class="return-value">
+                                    <small class="text-danger">₹0.00</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Benchmark Comparison Section -->
+                <hr class="my-3">
+                <div class="row">
+                    <div class="col-12">
+                        <small class="text-muted">Benchmark (NIFTY 50) - 1 Day</small>
+                        <div id="benchmarkDayReturnValue" class="return-value">
+                            <!-- Benchmark day return value will be displayed here -->
                         </div>
                     </div>
                 </div>
@@ -164,4 +196,32 @@ window.formatPercentage = formatPercentage;
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+<!-- Add this debug script before the closing </body> tag -->
+<script>
+// Debug script to check if elements exist and data is being received
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, checking elements...');
+    
+    // Check if elements exist
+    const portfolioValueEl = document.getElementById('portfolioDayReturnValue');
+    const benchmarkValueEl = document.getElementById('benchmarkDayReturnValue');
+    
+    console.log('Portfolio day return element:', portfolioValueEl);
+    console.log('Benchmark day return element:', benchmarkValueEl);
+    
+    // Test API endpoint
+    fetch('/api/portfolio')
+        .then(response => response.json())
+        .then(data => {
+            console.log('API Response:', data);
+            console.log('Day return value:', data.day_return_value);
+            console.log('Benchmark day return:', data.benchmark_day_return);
+            console.log('Benchmark day return value:', data.benchmark_day_return_value);
+        })
+        .catch(error => {
+            console.error('API Error:', error);
+        });
+});
+</script>
 {% endblock %}

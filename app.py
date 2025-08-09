@@ -53,6 +53,21 @@ def create_app():
         except (ValueError, TypeError):
             return "0"
     
+    @app.template_filter('signed_currency')
+    def signed_currency_filter(value):
+        """Format number as signed Indian currency with + or - prefix"""
+        try:
+            num = float(value)
+            sign = "+" if num >= 0 else ""
+            if abs(num) >= 10000000:  # 1 crore
+                return f"{sign}₹{num/10000000:.2f} Cr"
+            elif abs(num) >= 100000:  # 1 lakh
+                return f"{sign}₹{num/100000:.2f} L"
+            else:
+                return f"{sign}₹{num:,.2f}"
+        except (ValueError, TypeError):
+            return "₹0.00"
+    
     # Register blueprints
     app.register_blueprint(main)
     app.register_blueprint(stock_bp)

@@ -2,7 +2,12 @@ class PortfolioManager {
     constructor() {
         this.portfolio = new Map();
         this.chart = null;
-        this.totalValue = 0;  // Add total value tracking
+        this.totalValue = 0;
+        this.portfolioDayReturnValue = 0;
+        this.benchmarkDayReturn = 0;
+        this.benchmarkDayReturnValue = 0;
+        this.var99Percent = 0;  // Changed from var95Percent
+        this.var99Value = 0;    // Changed from var95Value
         this.currencyFormatter = new Intl.NumberFormat('en-IN', {
             style: 'currency',
             currency: 'INR',
@@ -11,7 +16,6 @@ class PortfolioManager {
         });
         this.initializeChart();
         this.bindEvents();
-        // Load existing portfolio data
         this.loadExistingPortfolio();
     }
 
@@ -20,15 +24,52 @@ class PortfolioManager {
             const response = await fetch('/api/portfolio');
             if (response.ok) {
                 const data = await response.json();
+                console.log('Portfolio data loaded:', data);
+                
+                // Store return values from API response
+                this.portfolioDayReturnValue = data.day_return_value || 0;
+                this.benchmarkDayReturn = data.benchmark_day_return || 0;
+                this.benchmarkDayReturnValue = data.benchmark_day_return_value || 0;
+                this.var99Percent = data.var_99_percent || 0;  // Changed from var_95_percent
+                this.var99Value = data.var_99_value || 0;      // Changed from var_95_value
+                
+                // Load portfolio data
                 if (data.data && data.data.length > 0) {
                     this.portfolio = new Map(
                         data.data.map(stock => [stock.symbol, stock])
                     );
                     this.updateDisplay();
                 }
+                
+                // Update return displays
+                this.updateDayReturnValues();
+                this.updateVarDisplay();
             }
         } catch (error) {
-            console.log('No existing portfolio found or error loading:', error);
+            console.error('Error loading portfolio:', error);
+        }
+    }
+
+    async refreshPortfolioData() {
+        try {
+            const response = await fetch('/api/portfolio');
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Refreshed portfolio data:', data);
+                
+                // Update return values
+                this.portfolioDayReturnValue = data.day_return_value || 0;
+                this.benchmarkDayReturn = data.benchmark_day_return || 0;
+                this.benchmarkDayReturnValue = data.benchmark_day_return_value || 0;
+                this.var99Percent = data.var_99_percent || 0;  // Changed from var_95_percent
+                this.var99Value = data.var_99_value || 0;      // Changed from var_95_value
+                
+                // Update return displays
+                this.updateDayReturnValues();
+                this.updateVarDisplay();
+            }
+        } catch (error) {
+            console.error('Error refreshing portfolio data:', error);
         }
     }
 
@@ -187,6 +228,8 @@ class PortfolioManager {
                 value: stockData.price * stockData.quantity
             });
             this.updateDisplay();
+            // Refresh portfolio data to get updated return values
+            await this.refreshPortfolioData();
         } catch (error) {
             throw new Error(`Failed to add ${symbol}: ${error.message}`);
         }
@@ -212,6 +255,13 @@ class PortfolioManager {
             data.data.map(stock => [stock.symbol, stock])
         );
         
+        // Store additional return data
+        this.portfolioDayReturnValue = data.day_return_value || 0;
+        this.benchmarkDayReturn = data.benchmark_day_return || 0;
+        this.benchmarkDayReturnValue = data.benchmark_day_return_value || 0;
+        this.var99Percent = data.var_99_percent || 0;  // Changed from var_95_percent
+        this.var99Value = data.var_99_value || 0;      // Changed from var_95_value
+        
         this.updateDisplay();
     }
 
@@ -221,15 +271,17 @@ class PortfolioManager {
     }
 
     updateDisplay() {
-        this.updateTotalValue();  // Ensure total value is up to date
-        this.updateChart();
-        this.updateTable();
+        this.updateTable(); // Fixed: was this.updateHoldingsTable()
         this.updatePortfolioValue();
+        this.updateChart();
+        this.updateVarDisplay();
+        this.updateDayReturnValues(); // Added this call
     }
 
     createTableRow(symbol, data) {
         const row = document.createElement('tr');
-        const percentage = ((data.value / this.totalValue) * 100).toFixed(2);  // Use class property
+        const totalValue = this.getTotalValue(); // Use method instead of class property
+        const percentage = totalValue > 0 ? ((data.value / totalValue) * 100).toFixed(2) : '0.00';
         
         row.innerHTML = `
             <td>${symbol} <small class="text-muted">${data.name || ''}</small></td>
@@ -247,7 +299,7 @@ class PortfolioManager {
         return row;
     }
 
-    updateTable() {
+    updateTable() { // This method exists and is correct
         const tbody = document.getElementById('holdingsTable');
         tbody.innerHTML = '';
 
@@ -285,11 +337,71 @@ class PortfolioManager {
         
         this.updateReturnDisplay('dayReturn', 'dayReturnIcon', dayReturn);
         this.updateReturnDisplay('yearReturn', 'yearReturnIcon', yearReturn);
+        
+        // Update day return value displays
+        this.updateDayReturnValues();
+    }
+
+    updateDayReturnValues() {
+        console.log('Updating day return values:', {
+            portfolioDayReturnValue: this.portfolioDayReturnValue,
+            benchmarkDayReturn: this.benchmarkDayReturn,
+            benchmarkDayReturnValue: this.benchmarkDayReturnValue
+        });
+
+        // Update portfolio day return value
+        const portfolioValueElement = document.getElementById('portfolioDayReturnValue');
+        if (portfolioValueElement) {
+            const colorClass = this.portfolioDayReturnValue >= 0 ? 'text-success' : 'text-danger';
+            const sign = this.portfolioDayReturnValue >= 0 ? '+' : '';
+            portfolioValueElement.innerHTML = `<span class="${colorClass}">${sign}${this.currencyFormatter.format(Math.abs(this.portfolioDayReturnValue))}</span>`;
+        }
+        
+        // Update benchmark day return value
+        const benchmarkValueElement = document.getElementById('benchmarkDayReturnValue');
+        if (benchmarkValueElement) {
+            const colorClass = this.benchmarkDayReturnValue >= 0 ? 'text-success' : 'text-danger';
+            const sign = this.benchmarkDayReturnValue >= 0 ? '+' : '';
+            const benchmarkSign = this.benchmarkDayReturn >= 0 ? '+' : '';
+            benchmarkValueElement.innerHTML = `
+                <span class="${colorClass}">
+                    ${sign}${this.currencyFormatter.format(Math.abs(this.benchmarkDayReturnValue))} 
+                    (NIFTY: ${benchmarkSign}${Math.abs(this.benchmarkDayReturn).toFixed(2)}%)
+                </span>
+            `;
+        }
+    }
+
+    updateVarDisplay() {
+        console.log('Updating VaR display:', {
+            var99Percent: this.var99Percent,  // Changed from var95Percent
+            var99Value: this.var99Value       // Changed from var95Value
+        });
+
+        // Update VaR display
+        const varElement = document.getElementById('portfolioVaR');
+        if (varElement) {
+            const varPercentFormatted = Math.abs(this.var99Percent).toFixed(2);  // Changed from var95Percent
+            const varValueFormatted = this.currencyFormatter.format(Math.abs(this.var99Value));  // Changed from var95Value
+            
+            varElement.innerHTML = `
+                <h6 class="mb-0 text-danger">${varPercentFormatted}%</h6>
+                <small class="text-muted">VaR (99%)</small>
+                <div class="return-value">
+                    <small class="text-danger">${varValueFormatted}</small>
+                </div>
+            `;
+        }
     }
 
     updateReturnDisplay(elementId, iconId, returnValue) {
         const element = document.getElementById(elementId);
         const iconElement = document.getElementById(iconId);
+        
+        if (!element || !iconElement) {
+            console.warn(`Element not found: ${elementId} or ${iconId}`);
+            return;
+        }
         
         // Ensure return value is a number
         const numericReturn = parseFloat(returnValue) || 0;

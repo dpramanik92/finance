@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify, request, session, send_file
 from ..utils.data_store import portfolio_store
+from ..utils.stock import get_current_price, get_stock_with_benchmark_fallback
+from ..utils.performance_analytics import PerformanceAnalytics
 import yfinance as yf
 from datetime import datetime, timedelta
 import pandas as pd
@@ -19,41 +21,44 @@ def load_portfolio():
 @stock_bp.route('/stock/<symbol>', methods=['GET'])
 def get_stock_data(symbol):
     try:
-        # Create Ticker object and fetch data with error handling
+        # Use enhanced stock data fetching with benchmark fallback
+        stock_data_enhanced = get_stock_with_benchmark_fallback(symbol.upper())
+        
+        # Create Ticker object for additional info
         stock = yf.Ticker(symbol.upper())
         
         try:
-            hist = stock.history(period='2d')
-            if hist.empty:
-                raise ValueError("No historical data available")
+            # Get current price from enhanced data if available
+            if not stock_data_enhanced.empty:
+                current_price = float(stock_data_enhanced['Close'].iloc[-1])
+                hist = stock_data_enhanced
+            else:
+                # Fallback to original method
+                hist = stock.history(period='2d')
+                if hist.empty:
+                    raise ValueError("No historical data available")
+                current_price = float(hist['Close'].iloc[-1])
+                
         except Exception as e:
             logger.error(f"Error fetching history for {symbol}: {e}")
             return jsonify({'error': f'Failed to fetch data for {symbol}'}), 404
 
-        # Get current price and currency information
+        # Get additional info
         info = stock.info
-        current_price = info.get('regularMarketPrice')
         currency = info.get('currency', 'USD')
         
-        if not current_price and len(hist) > 0:
-            current_price = float(hist['Close'].iloc[-1])
-        
-        if not current_price:
-            return jsonify({'error': f'No price data available for {symbol}'}), 404
-
         # Convert to INR if necessary
         price_in_inr = current_price
         if currency == 'USD':
-            # You might want to fetch real-time forex rates here
-            usd_to_inr = 83.0  # Example fixed rate
+            usd_to_inr = 83.0  # You might want to fetch real-time forex rates
             price_in_inr = current_price * usd_to_inr
             logger.debug(f"Converting {current_price} USD to {price_in_inr} INR")
 
-        # Calculate returns safely
+        # Calculate returns using enhanced historical data
         day_return = 0
         year_return = 0
 
-        # Calculate 1-day return using historical data
+        # Calculate 1-day return
         if len(hist) >= 2:
             try:
                 yesterday_close = float(hist['Close'].iloc[-2])
@@ -64,15 +69,17 @@ def get_stock_data(symbol):
             except Exception as e:
                 logger.error(f"Error calculating day return: {e}")
 
-        # Get 1-year history for annual return
+        # Calculate 1-year return using enhanced data
         try:
-            year_hist = stock.history(period='1y')
-            if len(year_hist) > 0:
-                year_ago_price = float(year_hist['Close'].iloc[0])
-                if currency == 'USD':
-                    year_ago_price *= usd_to_inr
-                year_return = ((price_in_inr - year_ago_price) / year_ago_price) * 100
-                logger.debug(f"Year return calculation: {year_return}%")
+            if len(hist) >= 252:  # At least 1 year of trading days
+                year_ago_price = float(hist['Close'].iloc[-252])
+            else:
+                year_ago_price = float(hist['Close'].iloc[0])
+                
+            if currency == 'USD':
+                year_ago_price *= usd_to_inr
+            year_return = ((price_in_inr - year_ago_price) / year_ago_price) * 100
+            logger.debug(f"Year return calculation: {year_return}%")
         except Exception as e:
             logger.error(f"Error calculating year return: {e}")
 
@@ -86,7 +93,8 @@ def get_stock_data(symbol):
             'yearReturn': round(float(year_return), 2),
             'name': info.get('longName', symbol),
             'currency': 'INR',
-            'quantity': int(request.args.get('quantity', 0))
+            'quantity': int(request.args.get('quantity', 0)),
+            'dataQuality': 'enhanced' if not stock_data_enhanced.empty else 'basic'
         }
 
         logger.debug(f"Processed data for {symbol}: {stock_data}")
@@ -102,16 +110,65 @@ def get_stock_data(symbol):
 
 @stock_bp.route('/portfolio', methods=['GET'])
 def get_portfolio():
-    """Get current portfolio data"""
+    """Get current portfolio data with day return values and VaR"""
     try:
         portfolio = portfolio_store.get_portfolio()
+        
+        if portfolio.empty:
+            return jsonify({
+                'data': [],
+                'total_value': 0,
+                'day_return': 0,
+                'year_return': 0,
+                'day_return_value': 0,
+                'benchmark_day_return': 0,
+                'benchmark_day_return_value': 0,
+                'var_99_percent': 0,
+                'var_99_value': 0
+            })
+        
+        # Get benchmark day return
+        perf = PerformanceAnalytics()
+        benchmark_day_return_pct = perf.get_benchmark_day_return()
+        
+        # Calculate portfolio returns
+        portfolio_returns = portfolio_store.get_returns()
+        day_return_pct = portfolio_returns[0]
+        year_return_pct = portfolio_returns[1]
+        
+        # Calculate value-based returns
+        total_value = portfolio_store.get_total_value()
+        portfolio_day_return_value = (total_value * day_return_pct) / 100
+        benchmark_day_return_value = (total_value * benchmark_day_return_pct) / 100
+        
+        # Calculate VaR in value terms (quick calculation for current portfolio value)
+        portfolio_df = portfolio_store.get_portfolio()
+        if not portfolio_df.empty:
+            # Get historical returns for VaR calculation
+            performance_data = perf.get_portfolio_returns(portfolio_df)
+            var_99_percent = performance_data['metrics'].get('var_99_percent', 0)
+            var_99_value = performance_data['metrics'].get('var_99_value', 0)
+        else:
+            var_99_percent = 0
+            var_99_value = 0
+        
+        print(f"Portfolio API Response: total_value={total_value}, day_return_pct={day_return_pct}, day_return_value={portfolio_day_return_value}")
+        print(f"Benchmark: day_return_pct={benchmark_day_return_pct}, day_return_value={benchmark_day_return_value}")
+        print(f"VaR (99%): {var_99_percent:.2f}% (₹{var_99_value:.2f})")
+        
         return jsonify({
             'data': portfolio.to_dict('records'),
-            'total_value': portfolio_store.get_total_value(),
-            'day_return': portfolio_store.get_returns()[0],
-            'year_return': portfolio_store.get_returns()[1]
+            'total_value': float(total_value),
+            'day_return': float(day_return_pct),
+            'year_return': float(year_return_pct),
+            'day_return_value': float(portfolio_day_return_value),
+            'benchmark_day_return': float(benchmark_day_return_pct),
+            'benchmark_day_return_value': float(benchmark_day_return_value),
+            'var_99_percent': float(var_99_percent),
+            'var_99_value': float(var_99_value)
         })
     except Exception as e:
+        print(f"Error in get_portfolio: {e}")
         return jsonify({'error': str(e)}), 500
 
 @stock_bp.route('/portfolio/<symbol>', methods=['DELETE'])

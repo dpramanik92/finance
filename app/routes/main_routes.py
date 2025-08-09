@@ -123,7 +123,13 @@ def portfolio():
                 },
                 'metrics': {
                     'one_year_return': float(raw_performance['metrics'].get('one_year_return', 0)),
-                    'volatility': float(raw_performance['metrics'].get('volatility', 0))
+                    'volatility': float(raw_performance['metrics'].get('volatility', 0)),
+                    'sharpe_ratio': float(raw_performance['metrics'].get('sharpe_ratio', 0)),
+                    'max_drawdown': float(raw_performance['metrics'].get('max_drawdown', 0)),
+                    'beta': float(raw_performance['metrics'].get('beta', 1.0)),
+                    'var_99_percent': float(raw_performance['metrics'].get('var_99_percent', 0)),
+                    'var_99_value': float(raw_performance['metrics'].get('var_99_value', 0)),
+                    'correlation': float(raw_performance['metrics'].get('correlation', 0))
                 }
             }
         except Exception as e:
@@ -131,7 +137,16 @@ def portfolio():
             performance_data = {
                 'portfolio_hist': {'index': [], 'values': []},
                 'benchmark_hist': {'index': [], 'values': []},
-                'metrics': {'one_year_return': 0.0, 'volatility': 0.0}
+                'metrics': {
+                    'one_year_return': 0.0, 
+                    'volatility': 0.0, 
+                    'sharpe_ratio': 0.0,
+                    'max_drawdown': 0.0,
+                    'beta': 1.0,
+                    'var_99_percent': 0.0,
+                    'var_99_value': 0.0,
+                    'correlation': 0.0
+                }
             }
         
         # Convert portfolio to list of dicts with safe conversion
@@ -242,7 +257,16 @@ def portfolio():
             performance={
                 'portfolio_hist': {'index': [], 'values': []},
                 'benchmark_hist': {'index': [], 'values': []},
-                'metrics': {'one_year_return': 0.0, 'volatility': 0.0}
+                'metrics': {
+                    'one_year_return': 0.0, 
+                    'volatility': 0.0, 
+                    'sharpe_ratio': 0.0,
+                    'max_drawdown': 0.0,
+                    'beta': 1.0,
+                    'var_99_percent': 0.0,
+                    'var_99_value': 0.0,
+                    'correlation': 0.0
+                }
             }
         )
 
